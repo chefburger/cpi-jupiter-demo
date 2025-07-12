@@ -15,8 +15,6 @@ describe("cpi-jupiter-demo", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const provider = anchor.getProvider();
   const wallet = provider.wallet;
-
-
   const program = anchor.workspace.cpiJupiterDemo as Program<CpiJupiterDemo>;
 
   it("Can perform a swap via CPI", async () => {
@@ -27,7 +25,8 @@ describe("cpi-jupiter-demo", () => {
     const usdcTokenAccount = await getAssociatedTokenAddress(new PublicKey(USDC_MINT), wallet.publicKey);
     const usdcBalanceBefore = await provider.connection.getTokenAccountBalance(usdcTokenAccount);
 
-    await swap(program, wallet, provider, WSOL_MINT, USDC_MINT)
+    const inputAmount = 0.01 * LAMPORTS_PER_SOL
+    await swap(program, WSOL_MINT, USDC_MINT, inputAmount)
 
     // get SOL and USDC balance of the wallet after the swap
     const solBalanceAfter = await provider.connection.getBalance(wallet.publicKey);
@@ -36,7 +35,9 @@ describe("cpi-jupiter-demo", () => {
     // compare the balances in human readable format
     // console.log(`swapped ${(solBalanceBefore - solBalanceAfter) / LAMPORTS_PER_SOL} SOL for ${usdcBalanceAfter.value.uiAmount - usdcBalanceBefore.value.uiAmount} USDC`)
 
-    assert.approximately(solBalanceBefore - solBalanceAfter, 0.01 * LAMPORTS_PER_SOL, 0.00001 * LAMPORTS_PER_SOL);
+
+    // 1% tolerance
+    assert.approximately(solBalanceBefore - solBalanceAfter, inputAmount, 0.01 * inputAmount);
     assert.isAbove(usdcBalanceAfter.value.uiAmount - usdcBalanceBefore.value.uiAmount, 1);
 
   });

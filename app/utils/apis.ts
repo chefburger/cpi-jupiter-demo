@@ -1,8 +1,9 @@
 import axios from "axios"
+import { LAMPORTS_PER_SOL } from "@solana/web3.js"
 import { debug } from "./debug"
 
 // https://dev.jup.ag/docs/api/swap-api/quote
-export const callQuote = async (inputMint: string, outputMint: string, amount: number = 10000000, slippageBps: number = 100) => {
+export const callQuote = async (inputMint: string, outputMint: string, amount: number = 0.01 * LAMPORTS_PER_SOL, slippageBps: number = 1000) => {
     const quote = await axios.get("https://lite-api.jup.ag/swap/v1/quote", {
         params: {
             inputMint,

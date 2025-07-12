@@ -5,6 +5,7 @@ import {
     VersionedTransaction,
     TransactionMessage,
 } from "@solana/web3.js";
+import * as anchor from "@coral-xyz/anchor";
 import { callQuote, callSwapInstruction } from "../../app/utils/apis";
 
 
@@ -42,8 +43,11 @@ const addressesToAlt = async (connection, keys) => {
     }, new Array<AddressLookupTableAccount>());
 }
 
-export const swap = async (program, wallet, provider, inputMint, outputMint) => {
-    const quote = await callQuote(inputMint, outputMint)
+export const swap = async (program, inputMint, outputMint, amount) => {
+    const provider = anchor.getProvider();
+    const wallet = provider.wallet;
+
+    const quote = await callQuote(inputMint, outputMint, amount)
     const swapInstructionsRaw = await callSwapInstruction(wallet.publicKey.toString(), quote)
     const swapInstruction = toTransactionInstruction(swapInstructionsRaw.swapInstruction)
 
@@ -72,9 +76,9 @@ export const swap = async (program, wallet, provider, inputMint, outputMint) => 
     const transaction = new VersionedTransaction(messageV0);
 
     try {
-        const tx = await provider.sendAndConfirm(transaction, [wallet.payer]);
+        await provider.sendAndConfirm(transaction, [wallet.payer]);
     } catch (e) {
+        console.log("Reason: \n")
         console.log(e)
-        console.log(await e.getLogs())
     }
 }
