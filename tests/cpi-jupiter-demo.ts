@@ -1,31 +1,43 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
 import { CpiJupiterDemo } from "../target/types/cpi_jupiter_demo";
-import { PublicKey } from "@solana/web3.js";
-import { executeSwap } from "./helper";
+import { Program } from "@coral-xyz/anchor";
+
+import { swap } from "./helpers/swap";
+import { USDC_MINT, WSOL_MINT } from "../app/utils/constants";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddress } from "@solana/spl-token"
+import { assert } from "chai";
+
+
+
 
 describe("cpi-jupiter-demo", () => {
-  // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.getProvider();
+  const wallet = provider.wallet;
+
 
   const program = anchor.workspace.cpiJupiterDemo as Program<CpiJupiterDemo>;
 
-  // Jupiter Aggregator program ID (mainnet)
-  const JUPITER_AGGREGATOR_PROGRAM_ID = new PublicKey("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4");
-
   it("Can perform a swap via CPI", async () => {
-    // This test will work with the forked mainnet state
-    // You can add specific swap logic here once you have the forked environment running
 
-    console.log("Jupiter Aggregator Program ID:", JUPITER_AGGREGATOR_PROGRAM_ID.toString());
-    console.log("Your program ID:", program.programId.toString());
+    // get SOL and USDC balance of the wallet before the swap
+    const solBalanceBefore = await provider.connection.getBalance(wallet.publicKey);
 
-    // Example: await program.methods.swap(swapData).accounts({...}).rpc();
+    const usdcTokenAccount = await getAssociatedTokenAddress(new PublicKey(USDC_MINT), wallet.publicKey);
+    const usdcBalanceBefore = await provider.connection.getTokenAccountBalance(usdcTokenAccount);
 
-    // CQyLJnhNoqqTnYhRNLdVsSWonEMDcnLD5bEYxTHNt3Nv
-    const wallet = anchor.getProvider().wallet;
-    const provider = anchor.getProvider();
+    await swap(program, wallet, provider, WSOL_MINT, USDC_MINT)
 
-    await executeSwap(program, wallet, provider);
+    // get SOL and USDC balance of the wallet after the swap
+    const solBalanceAfter = await provider.connection.getBalance(wallet.publicKey);
+    const usdcBalanceAfter = await provider.connection.getTokenAccountBalance(usdcTokenAccount);
+
+    // compare the balances in human readable format
+    // console.log(`swapped ${(solBalanceBefore - solBalanceAfter) / LAMPORTS_PER_SOL} SOL for ${usdcBalanceAfter.value.uiAmount - usdcBalanceBefore.value.uiAmount} USDC`)
+
+    assert.approximately(solBalanceBefore - solBalanceAfter, 0.01 * LAMPORTS_PER_SOL, 0.00001 * LAMPORTS_PER_SOL);
+    assert.isAbove(usdcBalanceAfter.value.uiAmount - usdcBalanceBefore.value.uiAmount, 1);
+
   });
 });

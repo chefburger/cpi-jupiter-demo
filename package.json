@@ -2,8 +2,9 @@
   "license": "ISC",
   "scripts": {
     "start": "ts-node app/index.ts",
-    "forknet": "./scripts/start-fork.sh",
-    "test": "anchor test --skip-local-validator"
+    "test-node": "./scripts/test-node.sh",
+    "kill-node": "pkill -f 'solana-test-validator'",
+    "test": "./scripts/test.sh"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",

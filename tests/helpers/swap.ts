@@ -1,5 +1,3 @@
-import axios from "axios"
-
 import {
     PublicKey,
     AddressLookupTableAccount,
@@ -7,38 +5,7 @@ import {
     VersionedTransaction,
     TransactionMessage,
 } from "@solana/web3.js";
-
-
-// https://dev.jup.ag/docs/api/swap-api/quote
-const callQuote = async () => {
-    const quote = await axios.get("https://lite-api.jup.ag/swap/v1/quote", {
-        params: {
-            // wSOL
-            inputMint: "So11111111111111111111111111111111111111112",
-            // USDC
-            outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-            // 0.01 SOL
-            amount: 10000000,
-            slippageBps: 100,
-        }
-    })
-    // console.log("/////////////// /quote ///////////////")
-    // console.log(quote.data)
-    // console.log("\n\n\n")
-    return quote.data
-}
-
-// https://dev.jup.ag/docs/api/swap-api/swap-instructions
-const callSwapInstruction = async (userPublicKey, quote) => {
-    const swap = await axios.post("https://lite-api.jup.ag/swap/v1/swap-instructions", {
-        userPublicKey: userPublicKey,
-        quoteResponse: quote,
-    })
-    console.log("/////////////// /swap-instructions ///////////////")
-    console.log(JSON.stringify(swap.data, null, 2))
-    console.log("\n\n\n")
-    return swap.data
-}
+import { callQuote, callSwapInstruction } from "../../app/utils/apis";
 
 
 const toTransactionInstruction = (
@@ -75,14 +42,15 @@ const addressesToAlt = async (connection, keys) => {
     }, new Array<AddressLookupTableAccount>());
 }
 
-export const executeSwap = async (program, wallet, provider) => {
-    const quote = await callQuote()
+export const swap = async (program, wallet, provider, inputMint, outputMint) => {
+    const quote = await callQuote(inputMint, outputMint)
     const swapInstructionsRaw = await callSwapInstruction(wallet.publicKey.toString(), quote)
     const swapInstruction = toTransactionInstruction(swapInstructionsRaw.swapInstruction)
 
     const instructions = [
         // TODO: is this needed?
         ...swapInstructionsRaw.computeBudgetInstructions.map(toTransactionInstruction),
+        ...swapInstructionsRaw.setupInstructions.map(toTransactionInstruction),
         await program.methods
             .swap(swapInstruction.data)
             .accounts({})
@@ -90,11 +58,8 @@ export const executeSwap = async (program, wallet, provider) => {
             .instruction(),
     ];
 
-
-
     const blockhash = (await provider.connection.getLatestBlockhash()).blockhash;
 
-    // If you want, you can add more lookup table accounts here
     const addressLookupTableAccounts = await addressesToAlt(
         provider.connection,
         swapInstructionsRaw.addressLookupTableAddresses
@@ -105,6 +70,11 @@ export const executeSwap = async (program, wallet, provider) => {
         instructions,
     }).compileToV0Message(addressLookupTableAccounts);
     const transaction = new VersionedTransaction(messageV0);
-    const tx = await provider.sendAndConfirm(transaction, [wallet.payer]);
-    console.log(tx)
+
+    try {
+        const tx = await provider.sendAndConfirm(transaction, [wallet.payer]);
+    } catch (e) {
+        console.log(e)
+        console.log(await e.getLogs())
+    }
 }

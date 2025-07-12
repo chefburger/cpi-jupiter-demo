@@ -42,6 +42,35 @@ pub mod cpi_jupiter_demo {
         )?;
         Ok(())
     }
+
+    pub fn transfer_and_swap(ctx: Context<Swap>, data: Vec<u8>) -> Result<()> {
+        let accounts: Vec<AccountMeta> = ctx
+            .remaining_accounts
+            .iter()
+            .map(|acc| AccountMeta {
+                pubkey: *acc.key,
+                is_signer: acc.is_signer,
+                is_writable: acc.is_writable,
+            })
+            .collect();
+
+        let accounts_infos: Vec<AccountInfo> = ctx
+            .remaining_accounts
+            .iter()
+            .map(|acc| AccountInfo { ..acc.clone() })
+            .collect();
+
+        invoke_signed(
+            &Instruction {
+                program_id: jupiter_aggregator::ID,
+                accounts,
+                data,
+            },
+            &accounts_infos,
+            &[],
+        )?;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
