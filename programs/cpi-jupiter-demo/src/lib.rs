@@ -106,7 +106,7 @@ pub mod cpi_jupiter_demo {
             // Transfer SOL from payer to vault PDA
             let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
                 &ctx.accounts.payer.key(),
-                &ctx.accounts.vault_pda.key(),
+                &ctx.accounts.vault_input_ata.key(),
                 amount,
             );
 
@@ -114,7 +114,7 @@ pub mod cpi_jupiter_demo {
                 &transfer_ix,
                 &[
                     ctx.accounts.payer.to_account_info(),
-                    ctx.accounts.vault_pda.to_account_info(),
+                    ctx.accounts.vault_input_ata.to_account_info(),
                     ctx.accounts.system_program.to_account_info(),
                 ],
             )?;
@@ -138,21 +138,6 @@ pub mod cpi_jupiter_demo {
                 "Successfully transferred {} SOL from payer and wrapped to wSOL",
                 amount
             );
-
-            let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
-                &ctx.accounts.payer.key(),
-                &ctx.accounts.vault_pda.key(),
-                amount,
-            );
-
-            anchor_lang::solana_program::program::invoke(
-                &transfer_ix,
-                &[
-                    ctx.accounts.payer.to_account_info(),
-                    ctx.accounts.vault_pda.to_account_info(),
-                    ctx.accounts.system_program.to_account_info(),
-                ],
-            )?;
         }
 
         Ok(())

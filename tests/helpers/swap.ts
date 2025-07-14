@@ -11,11 +11,10 @@ import * as anchor from "@coral-xyz/anchor";
 import { callQuote, callSwapInstruction } from "../../app/utils/apis";
 import {
     getAssociatedTokenAddress,
-    createAssociatedTokenAccountInstruction,
-    createTransferInstruction,
     TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
+import { debug } from "../../app/utils/debug";
 
 
 const toTransactionInstruction = (
@@ -85,7 +84,7 @@ export const swapByUser = async (program, inputMint, outputMint, amount) => {
     const transaction = new VersionedTransaction(messageV0);
 
     try {
-        await provider.sendAndConfirm(transaction, [wallet.payer]);
+        return await provider.sendAndConfirm(transaction, [wallet.payer], { skipPreflight: true, commitment: "confirmed" });
     } catch (e) {
         console.log("Reason: \n")
         console.log(e)
@@ -101,9 +100,9 @@ export const swapByProgram = async (program, inputMint, outputMint, amount) => {
     const userAta = await getAssociatedTokenAddress(new PublicKey(inputMint), wallet.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID)
     const vaultPda = PublicKey.findProgramAddressSync([Buffer.from("vault")], program.programId)[0]
     const programVaultAta = await getAssociatedTokenAddress(new PublicKey(inputMint), vaultPda, true)
-    console.log("userAta", userAta.toString())
-    console.log("vaultPda", vaultPda.toString())
-    console.log("programVaultAta", programVaultAta.toString())
+    debug("userAta", userAta.toString())
+    debug("vaultPda", vaultPda.toString())
+    debug("programVaultAta", programVaultAta.toString())
 
 
 
@@ -129,9 +128,6 @@ export const swapByProgram = async (program, inputMint, outputMint, amount) => {
             })
             .instruction(),
 
-        // setup instructions are not needed for the program because we aasume the input token is already in program's ATA
-        // ...swapInstructionsRaw.setupInstructions.map(toTransactionInstruction),
-
         await program.methods
             .swapByProgram(swapInstruction.data)
             .accounts({
@@ -155,7 +151,10 @@ export const swapByProgram = async (program, inputMint, outputMint, amount) => {
     const transaction = new VersionedTransaction(messageV0);
 
     try {
-        await provider.sendAndConfirm(transaction, [wallet.payer], { skipPreflight: true });
+        // skip simulation so that we can see the tx hash
+        // and then can try following tmd to be able to see the tx details
+        // solana confirm -v <hash> --url  http://127.0.0.1:8899 --output json
+        return await provider.sendAndConfirm(transaction, [wallet.payer], { skipPreflight: true, commitment: "confirmed" });
     } catch (e) {
         console.log("Reason: \n")
         console.log(JSON.stringify(e, null, 2))
